@@ -1,0 +1,14 @@
+{
+  "name": "bugcide-webpack-plugin",
+  "version": "1.0.0",
+  "description": "webpack compile error tracker",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "JY",
+  "license": "ISC",
+  "dependencies": {
+    "node-fetch": "^2.6.0"
+  }
+}
