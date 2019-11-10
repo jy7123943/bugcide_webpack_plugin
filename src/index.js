@@ -2,50 +2,57 @@ const fetch = require("node-fetch");
 
 class BugcidePlugin {
   constructor(options) {
-    console.log(options);
     this.options = options;
     this.isErrorSendReady = false;
     this.serverUrl = 'http://localhost:8080';
-    console.log(this.serverUrl);
   }
   apply(compiler) {
-    console.log('applying', this.options);
-    compiler.hooks.emit.tapPromise('BugcidePlugin', async (compilation) => {
-      console.log('The webpack build process is starting!!!');
+    console.log('Bugcide webpack plugin start');
+    compiler.hooks.emit.tapAsync('BugcidePlugin', async (compilation, callback) => {
 
       if (!compilation.errors.length) {
-        return;
+        return callback();
       }
 
       this.isErrorSendReady = true;
       const errorCollection = compilation.errors.map(err => {
-        const messageStart = err.error.message.indexOf(' ');
-        const messageEnd = err.error.message.indexOf('\n');
+
+        let filename, lineno, colno;
+        let targetError;
+
+        if (err.name === 'ModuleError') {
+          targetError = err.module.error ? err.module.error.error : err;
+
+          filename = err.module.issuer.resource;
+        } else {
+          targetError = err.error.stack ? err.error : err;
+
+          filename = err.origin.issuer.resource;
+        }
+
+        lineno = targetError.loc && targetError.loc.line;
+        colno = targetError.loc && targetError.loc.col;
         return {
-          name: err.error.name,
-          message: err.error.message.slice(messageStart, messageEnd),
-          stack: err.error.toString(),
-          filename: err.origin.issuer.resource,
-          lineno: err.error.loc.line,
-          colno: err.error.loc.column,
+          name: targetError.name,
+          message: targetError.message.split('\n')[0],
+          stack: targetError.stack,
+          lineno,
+          colno,
+          filename,
           duplicate_count: 1,
           created_at: new Date()
         };
       });
 
-      const errorList = {
-        errorInfo: errorCollection
-      };
+      const errorList = { errorInfo: errorCollection };
 
-      console.log('catch errors====================');
-      // console.dir(compilation.errors[0]);
       if (!this.isErrorSendReady) {
         return callback();
       }
 
       try {
+        this.isErrorSendReady = false;
         const response = await this.sendErrorApi(this.options.projectToken, errorList);
-        console.log(response);
 
         if (response.result === 'unauthorized') {
           throw new Error('Project Token is invalid!');
@@ -55,13 +62,10 @@ class BugcidePlugin {
           throw new Error('Something went wrong.');
         }
       } catch (err) {
-        console.log('Bugcide: ' + err.message);
+        console.log('Bugcide Error: ' + err.message);
       }
 
-      this.isErrorSendReady = false;
-      console.log(compilation.errors[0].error.toString());
-      console.log(errorList);
-      console.log('catch errors====',compilation.warnings);
+      callback();
     });
   }
   sendErrorApi(projectToken, errorList) {
