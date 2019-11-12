@@ -3,7 +3,7 @@ const fetch = require("node-fetch");
 class BugcidePlugin {
   constructor(options) {
     this.options = options;
-    this.serverUrl = 'http://bugcide-env-prod.iymfy5w5fp.ap-northeast-2.elasticbeanstalk.com';
+    this.serverUrl = 'https://api.bugcide.live';
   }
 
   apply(compiler) {
